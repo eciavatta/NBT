@@ -82,13 +82,41 @@ public class Section {
 
 	public CompoundTag getBlockStateAt(int blockX, int blockY, int blockZ) {
 		int index = getBlockIndex(blockX, blockY, blockZ);
-		int paletteIndex = getPaletteIndex(index);
+		return getBlockStateAt(index);
+	}
+
+	public CompoundTag getBlockStateAt(int blockStateIndex) {
+		int paletteIndex = getPaletteIndex(blockStateIndex);
 		return palette.get(paletteIndex);
 	}
 
-	public void setBlockStateAt(int blockX, int blockY, int blockZ, CompoundTag state, boolean cleanup) {
+	public String getBlockStateNameAt(int blockX, int blockY, int blockZ) {
+		int index = getBlockIndex(blockX, blockY, blockZ);
+		return getBlockStateNameAt(index);
+	}
+
+	public String getBlockStateNameAt(int blockStateIndex) {
+		int paletteIndex = getPaletteIndex(blockStateIndex);
+		return palette.get(paletteIndex).getString("Name");
+	}
+
+	public void setBlockStateAt(int blockX, int blockY, int blockZ, CompoundTag stateTag, boolean cleanup) {
+		setBlockStateAt(getBlockIndex(blockX, blockY, blockZ), stateTag, cleanup);
+	}
+
+	public void setBlockStateAt(int blockX, int blockY, int blockZ, String stateName, boolean cleanup) {
+		setBlockStateAt(getBlockIndex(blockX, blockY, blockZ), stateName, cleanup);
+	}
+
+	public void setBlockStateAt(int blockStateIndex, String stateName, boolean cleanup) {
+		CompoundTag stateTag = new CompoundTag();
+		stateTag.putString("Name", stateName);
+		setBlockStateAt(blockStateIndex, stateTag, cleanup);
+	}
+
+	public void setBlockStateAt(int blockStateIndex, CompoundTag stateTag, boolean cleanup) {
 		int paletteSizeBefore = palette.size();
-		int paletteIndex = addToPalette(state);
+		int paletteIndex = addToPalette(stateTag);
 		//power of 2 --> bits must increase, but only if the palette size changed
 		//otherwise we would attempt to update all blockstates and the entire palette
 		//every time an existing blockstate was added while having 2^x blockstates in the palette
@@ -97,7 +125,7 @@ public class Section {
 			cleanup = true;
 		}
 
-		setPaletteIndex(getBlockIndex(blockX, blockY, blockZ), paletteIndex, blockStates);
+		setPaletteIndex(blockStateIndex, paletteIndex, blockStates);
 
 		if (cleanup) {
 			cleanupPaletteAndBlockStates();
@@ -142,8 +170,24 @@ public class Section {
 		}
 	}
 
-	ListTag<CompoundTag> getPalette() {
-		return palette;
+	public ListTag<CompoundTag> getPalette() {
+		return palette.clone();
+	}
+
+	public String[] getPaletteWithNames() {
+		int size = palette.size();
+		String[] localPalette = new String[size];
+
+		for (int i = 0; i < size; i++) {
+			localPalette[i] = palette.get(i).getString("Name");
+		}
+
+		return localPalette;
+	}
+
+	public byte getPaletteBitSize() {
+		int bits = 32 - Integer.numberOfLeadingZeros(palette.size() - 1);
+		return bits < 4 ? 4 : (byte) bits;
 	}
 
 	int addToPalette(CompoundTag data) {
